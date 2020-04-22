@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            background: #000;
+        }
+
+        #top {
+            font-family: '微軟正黑體';
+            width: 1500px;
+            height: 60px;
+            margin: auto;
+            color: white;
+        }
+
+        .side {
+            width: 500px;
+            margin: 0;
+            float: left;
+            text-align: center;
+            font-size: 25px;
+
+        }
+
+        #bigtitle {
+            font-size: 40px;
+        }
+
+        .card {
+            width: 100px;
+            height: 180px;
+            transform-style: preserve-3d;
+            position: relative;
+            transform: rotateY(180deg);
+            transition: transform 0.5s;
+            float: left;
+            margin: 10px;
+            box-shadow: 0 0 10px rgb(255, 246, 198);
+            border-radius: 5px;
+        }
+
+        .front {
+            width: 100%;
+            height: 100%;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: absolute;
+        }
+
+        .back {
+            width: 100%;
+            height: 100%;
+            background-image: url(./cards/Red_back.jpg);
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: absolute;
+            transform: rotateY(180deg);
+            /* 修正淡出動畫，使背面不可見。這樣翻到成對的時候才會在正面狀態消失。 */
+            backface-visibility: hidden;
+        }
+
+        #game {
+            width: 960px;
+            height: 600px;
+            margin: auto;
+        }
+
+        .open {
+            transform: rotateY(0deg);
+        }
+
+        .intro {
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+
+        #startbtn {
+            font-size: 30px;
+            width: 150px;
+            height: 80px;
+            border-radius: 10px;
+            margin: 260px 405px;
+            background: none;
+            color: #FFF;
+        }
+
+        .animation {
+            animation-name: animation;
+            animation-duration: 0.4s;
+            animation-iteration-count: infinite;
+            animation-timing-function: linear;
+            animation-delay: 0.5s;
+            animation-direction: alternate;
+        }
+
+        @keyframes animation {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 10px rgb(173, 255, 251);
+            }
+
+            100% {
+                transform: scale(1.1);
+                box-shadow: 0 0 10px rgb(255, 113, 155);
+            }
+
+        }
+    </style>
+</head>
+
+<body>
+    <div id="top">
+        <div class="side">&nbsp;</div>
+        <div class="side" id="bigtitle">翻牌記憶遊戲</div>
+        <div class="side">消耗時間：<span id="text_time">0</span>秒</div>
+    </div>
+    <div id="game">
+        <input type="button" value="Start" id="startbtn" class="animation">
+    </div>
+
+    <script src="jquery-3.5.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
+    <script>
+        let timecount = 0;
+        let timer = 0;
+        let ingame = false;
+
+        $(function () {
+            $("#startbtn").on("click", function () {
+                ingame = true;
+                if (ingame) {
+                    $(".intro").remove();
+                    $("#startbtn").remove();
+                    // 產生16張卡片
+                    for (let i = 0; i < 24; i++) {
+                        $('#game').append(` <div class="card">
+                    <div class="front"></div>
+                    <div class="back"></div>
+                    </div>`)
+                    }
+                    // 產生牌面
+                    for (let i = 0; i < $(".card").length; i++) {
+                        // 目前的 i 除以 8 的餘數 + 1
+                        // 因為要配對，所以是 16/2，製造 8 對(1~8H.jpg)，2 組1~8
+                        const num = i % ($(".card").length / 2) + 1;
+                        $(".card").eq(i).find(".front").css('background-image', `url(./cards/${num}H.jpg)`)
+                        // 製造一個卡牌資料庫
+                        $(".card").eq(i).attr("data-card", num);
+
+                    }
+                    // 隨機抽一張牌，放到目前迴圈的牌後面
+                    // 此處的 $(".card").length 表抽牌次數，可以更動
+                    for (let i = 0; i < $(".card").length; i++) {
+                        // i=0 時,隨機抽一張 eq(target)放到 eq(0)後面 ==> eq(target)就變成 eq(1)了
+                        let target = Math.floor(Math.random() * $(".card").length);
+                        $(".card").eq(target).insertAfter($(".card").eq(i));
+                    }
+
+                    $(".card").on("click", function () {
+                        // 如果以翻開的牌數量小於2，而且這張還沒翻開
+                        if ($('.open').length < 2 && !$(this).hasClass("open")) {
+                            $(this).addClass("open");
+                        }
+
+                        // 如果翻開兩張牌了
+                        if ($(".open").length == 2) {
+                            // 過一秒鐘後翻回來
+                            setTimeout(() => {
+                                $(".open").removeClass("open");
+                            }, 700)
+                            // 如果兩張一樣
+                            if ($(".open").eq(0).find(".front").css("background-image") ==
+                                $(".open").eq(1).find(".front").css("background-image")) {
+                                $(".open").fadeTo(1000, 0).addClass("ok");
+                            }
+                            if ($(".ok").length == $(".card").length) {
+                                clearInterval(timer);
+                                score = timecount
+                                setTimeout(() => {
+                                    Swal.fire({
+                                        icon: "success",
+                                        title: "恭喜過關",
+                                        text: `您花了${timecount}秒`,
+                                        confirmButtonText: "再玩一次"
+                                    }).then((result) => {
+                                        if (result.value) {
+                                            location.reload();
+                                        }
+                                    })
+                                }, 700)
+
+                            }
+                        }
+                    })
+                    // 計時器
+                    timer = setInterval(() => {
+                        timecount++;
+                        $("#text_time").text(timecount);
+                    }, 1000)
+                }
+            })
+
+
+        })
+    </script>
+</body>
+
+</html>
